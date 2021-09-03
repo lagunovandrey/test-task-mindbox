@@ -1,0 +1,47 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-task-app
+spec:
+  selector:
+    matchLabels:
+      app: test-task-app
+  replicas: 4
+  template:
+    metadata:
+      labels:
+        app: test-task-app
+    spec:
+      topologySpreadConstraints:
+      # Условие для выбора зоны доступности где еще не запущен pod с приложением
+      - maxSkew: 1
+        topologyKey: zone
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: test-task-app
+      # Условие для выбора node где еще не запущен pod. Для исключения ситуации двух pod на одной node
+      - maxSkew: 1
+        topologyKey: node
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: test-task-app      
+      containers:
+      - name: mywebapp
+        image: nginx:1.21.1
+        livenessProbe:
+          # проверка приложения на полезный ответ. Первая проверка после 10 сек
+          initialDelaySeconds: 10 
+        resources:
+          limits:
+            memory: "128Mi"
+            # на первые запросы приложению требуется значительно больше ресурсов CPU
+            # Лимит можно убрать, для снятия ограничей, а лучше разобраться сколько же все таки нужно на старте и можно ли это уменьшить.
+            cpu: "2" 
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+        ports:
+        - containerPort: 80
